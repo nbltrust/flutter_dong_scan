@@ -2,12 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-
 typedef ScanEventListener = dynamic Function(dynamic codeString);
 
 class SDScan {
-
-
   StreamSubscription<dynamic> _eventSubscription;
 
   static const MethodChannel _channel = const MethodChannel('scan');
@@ -25,7 +22,9 @@ class SDScan {
   }
 
   void initEvent() {
-    _eventSubscription = _eventChannelFor().receiveBroadcastStream().listen(scanEventListener,onError: scanErrorListener);
+    _eventSubscription = _eventChannelFor()
+        .receiveBroadcastStream()
+        .listen(scanEventListener, onError: scanErrorListener);
   }
 
   EventChannel _eventChannelFor() {
@@ -44,7 +43,7 @@ class SDScan {
       "maskRatio": scanConfig.maskRatio,
       "returnStyle": scanConfig.returnStyle,
       "titeColor": scanConfig.titeColor,
-      "title": scanConfig.title,
+      "titleString": scanConfig.title,
       "hintString": scanConfig.hintString,
     });
     return codeString;
