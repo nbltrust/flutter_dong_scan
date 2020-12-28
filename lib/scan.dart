@@ -45,6 +45,7 @@ class SDScan {
       "titeColor": scanConfig.titeColor,
       "titleString": scanConfig.title,
       "hintString": scanConfig.hintString,
+      "descriptionString": scanConfig.descriptionString,
     });
     return codeString;
   }
@@ -69,12 +70,14 @@ class ScanConfig {
   /*底部提示文字,默认为将二维码放入框内，即可自动扫描*/
   final String hintString;
 
-  ScanConfig({
-    this.maskColorAlpha = 0.3,
-    this.maskRatio = 0.68,
-    this.returnStyle = 0,
-    this.titeColor = '#4bde2b',
-    this.title = '扫一扫',
-    this.hintString = '将二维码放入框内，即可自动扫描',
-  });
+  final String descriptionString;
+
+  ScanConfig(
+      {this.maskColorAlpha = 0.3,
+      this.maskRatio = 0.68,
+      this.returnStyle = 0,
+      this.titeColor = '#4bde2b',
+      this.title = '扫一扫',
+      this.hintString = '将二维码放入框内，即可自动扫描',
+      this.descriptionString = ''});
 }

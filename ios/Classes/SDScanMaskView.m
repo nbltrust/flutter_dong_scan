@@ -24,6 +24,7 @@
 @property(nonatomic,strong)UIImageView *bottomLeftImageView;
 @property(nonatomic,strong)UIImageView *bottomRightImageView;
 @property(nonatomic,strong)UILabel *hintLabel;
+@property(nonatomic,strong)UILabel *descriptionLabel;
 
 @property(nonatomic,strong)UIBezierPath *bezier;
 @property(nonatomic,strong)CAShapeLayer *shapeLayer;
@@ -45,6 +46,7 @@
         [self addSubview:self.bottomRightImageView];
         [self addSubview:self.scanLineImageView];
         [self addSubview:self.hintLabel];
+        [self addSubview:self.descriptionLabel];
         [self startScanLineAnimationAction];
     }
     return self;
@@ -165,15 +167,28 @@
 - (UILabel *)hintLabel {
     
     if (_hintLabel == nil) {
-        _hintLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, self.bottomLeftImageView.bottom + 15.0, KmainWidth, NavigationBarHeight)];
+        _hintLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, self.titleLabel.bottom + 50, KmainWidth, NavigationBarHeight)];
         _hintLabel.textAlignment = NSTextAlignmentCenter;
-        _hintLabel.font = [UIFont systemFontOfSize:12];
+        _hintLabel.font = [UIFont systemFontOfSize:16];
         _hintLabel.textColor = [UIColor whiteColor];
         _hintLabel.text = _config.hintString;
         CGSize hintSize = [_hintLabel sizeThatFits:CGSizeMake(KmainWidth * _config.maskRatio, 0)];
-        _hintLabel.frame = CGRectMake((KmainWidth - hintSize.width)/2.0, self.bottomLeftImageView.bottom + 15.0, hintSize.width, hintSize.height);
+        _hintLabel.frame = CGRectMake((KmainWidth - hintSize.width)/2.0, self.titleLabel.bottom + 50, hintSize.width, hintSize.height);
     }
     return _hintLabel;
+}
+
+- (UILabel *)descriptionLabel {
+    if (_descriptionLabel == nil) {
+        _descriptionLabel = [[UILabel alloc] initWithFrame:CGRectMake(0, self.hintLabel.bottom + 6, KmainWidth, NavigationBarHeight)];
+        _descriptionLabel.textAlignment = NSTextAlignmentCenter;
+        _descriptionLabel.font = [UIFont systemFontOfSize:14];
+        _descriptionLabel.textColor = [UIColor whiteColor];
+        _descriptionLabel.text = _config.descriptionString;
+        CGSize descriptionSize = [_descriptionLabel sizeThatFits:CGSizeMake(KmainWidth * _config.maskRatio, 0)];
+        _descriptionLabel.frame = CGRectMake((KmainWidth - descriptionSize.width)/2.0, self.hintLabel.bottom + 6, descriptionSize.width, descriptionSize.height);
+    }
+    return _descriptionLabel;
 }
 
 #pragma mark - 相关事件

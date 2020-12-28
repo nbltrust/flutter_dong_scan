@@ -40,4 +40,7 @@ typedef void(^ScanResultBlock)(NSString *barCodeString);
 /// 底部提示文字,默认为将二维码放入框内，即可自动扫描
 @property(nonatomic,strong)NSString *hintString;
 
+/// description
+@property(nonatomic,strong)NSString *descriptionString;
+
 @end

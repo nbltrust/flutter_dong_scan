@@ -20,6 +20,7 @@
         _titeColor = nil;
         _titleString = @"扫一扫";
         _hintString = @"将二维码放入框内，即可自动扫描";
+        _descriptionString = @"description";
     }
     return self;
 }
