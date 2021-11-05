@@ -8,18 +8,19 @@
 
 #import "SDScanViewController.h"
 #import <AVFoundation/AVFoundation.h>
+#import <Vision/Vision.h>
 #import "SDScanMaskView.h"
 #import "SDScanHeader.h"
 
-@interface SDScanViewController ()<AVCaptureMetadataOutputObjectsDelegate>
+@interface SDScanViewController ()<AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property(nonatomic,strong)SDScanConfig *config;
 @property(nonatomic,strong)AVCaptureDevice *device;
 @property(nonatomic,strong)AVCaptureSession *session;
 @property(nonatomic,strong)AVCaptureVideoPreviewLayer *previewLayer;
+@property(nonatomic,strong)NSArray *request;
 
 @property(nonatomic,strong)SDScanMaskView *maskView;
-@property(nonatomic,strong)NSMutableArray *metadataObjectTypeArray;
 
 @end
 
@@ -60,41 +61,76 @@
     return _maskView;
 }
 
-- (NSMutableArray *)metadataObjectTypeArray {
+- (NSArray *)request {
     
-    if (_metadataObjectTypeArray == nil) {
-        _metadataObjectTypeArray = [NSMutableArray arrayWithArray:@[AVMetadataObjectTypeAztecCode,
-                                                                    AVMetadataObjectTypeCode128Code,
-                                                                    AVMetadataObjectTypeCode39Code,
-                                                                    AVMetadataObjectTypeCode39Mod43Code,
-                                                                    AVMetadataObjectTypeCode93Code,
-                                                                    AVMetadataObjectTypeEAN13Code,
-                                                                    AVMetadataObjectTypeEAN8Code,
-                                                                    AVMetadataObjectTypePDF417Code,
-                                                                    AVMetadataObjectTypeQRCode,
-                                                                    AVMetadataObjectTypeUPCECode,
-                                                                    AVMetadataObjectTypeInterleaved2of5Code,
-                                                                    AVMetadataObjectTypeITF14Code,
-                                                                    AVMetadataObjectTypeDataMatrixCode]];
+    if (_request == nil) {
+        __weak typeof(self) weakSelf = self;
+
+        VNDetectBarcodesRequest *request = [[VNDetectBarcodesRequest alloc] initWithCompletionHandler:^(VNRequest * _Nonnull request, NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"error %@", [error localizedDescription]);
+                return;
+            }
+            
+            NSArray *results = request.results;
+            for (id result in results) {
+                if ([result isKindOfClass:[VNBarcodeObservation class]]) {
+                    VNBarcodeObservation *observation = (VNBarcodeObservation *)result;
+
+                    NSString *qrValue = nil;
+                    if (observation.payloadStringValue) {
+                        qrValue = observation.payloadStringValue;
+                    } else {
+                        CIQRCodeDescriptor *descriptor = (CIQRCodeDescriptor *)observation.barcodeDescriptor;
+                        NSData *data = descriptor.errorCorrectedPayload;
+                        const unsigned char *dataBuffer = (const unsigned char *)[data bytes];
+
+                        if (!dataBuffer) {
+                            continue;
+                        }
+
+                        NSUInteger          dataLength  = [data length];
+                        NSMutableString     *hexString  = [NSMutableString stringWithCapacity:(dataLength * 2)];
+
+                        for (int i = 0; i < dataLength; ++i) {
+                            [hexString appendFormat:@"%02x", (unsigned int)dataBuffer[i]];
+                        }
+
+                        qrValue = [NSString stringWithString:hexString];
+                    }
+                    
+                    
+                    [weakSelf.session stopRunning];
+                    
+                    if (weakSelf.config.resultBlock != nil) {
+                        weakSelf.config.resultBlock(qrValue);
+                    }
+                    [weakSelf dismissViewControllerAnimated:YES completion:nil];
+
+                    break;
+                }
+            }
+        }];
+        request.symbologies = @[VNBarcodeSymbologyQR];
+        _request = @[request];
     }
-    return _metadataObjectTypeArray;
+    return _request;
 }
 
 #pragma mark - 扫描相关
 
 // 开始扫描
 - (void)startRunCameraScanAction {
-    
     self.device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-    AVCaptureDeviceInput * input = [AVCaptureDeviceInput deviceInputWithDevice:self.device error:nil];
-    AVCaptureMetadataOutput * metadataOutput = [[AVCaptureMetadataOutput alloc] init];
-    [metadataOutput setMetadataObjectsDelegate:self queue:dispatch_get_main_queue()];
+    AVCaptureDeviceInput * videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:self.device error:nil];
+    AVCaptureVideoDataOutput * videoDataOutput = [[AVCaptureVideoDataOutput alloc] init];
+    [videoDataOutput setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
     
     self.session = [[AVCaptureSession alloc] init];
     self.session.sessionPreset = AVCaptureSessionPresetHigh;
     
-    [self.session addInput:input];
-    [self.session addOutput:metadataOutput];
+    [self.session addInput:videoDeviceInput];
+    [self.session addOutput:videoDataOutput];
     
     self.previewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
     self.previewLayer.frame = self.view.bounds;
@@ -102,21 +138,35 @@
     self.previewLayer.backgroundColor = [UIColor yellowColor].CGColor;
     [self.view.layer addSublayer:self.previewLayer];
     
-    metadataOutput.metadataObjectTypes = [NSArray arrayWithArray:self.metadataObjectTypeArray];
-    
     [self.session startRunning];
 }
 
 // 扫描结果
-- (void)captureOutput:(AVCaptureOutput *)captureOutput didOutputMetadataObjects:(NSArray *)metadataObjects fromConnection:(AVCaptureConnection *)connection {
+- (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    if (!CMSampleBufferGetImageBuffer(sampleBuffer)) {
+        return;
+    }
     
-    if (metadataObjects.count > 0) {
-        [self.session stopRunning];
-        AVMetadataMachineReadableCodeObject * metadataObject = metadataObjects.firstObject;
-        if (self.config.resultBlock != nil) {
-            self.config.resultBlock(metadataObject.stringValue);
-        }
-        [self dismissViewControllerAnimated:YES completion:nil];
+    id dict = nil;
+        
+    if (@available(iOS 11.0, *)) {
+        //
+    } else {
+        return;
+    }
+
+    CFTypeRef ref = CMGetAttachment(sampleBuffer, kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix, nil);
+    if (ref) {
+        dict = VNImageOptionCameraIntrinsics;
+    }
+    
+    VNImageRequestHandler* requestHadler = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:CMSampleBufferGetImageBuffer(sampleBuffer) options:dict];
+        
+    @try {
+        [requestHadler performRequests:self.request error:nil];
+    }
+    @catch (NSException *exception) {
+        NSLog(@"AAA - %@", exception.reason);
     }
 }
 
