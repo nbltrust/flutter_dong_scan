@@ -95,10 +95,32 @@
                         for (int i = 0; i < dataLength; ++i) {
                             [hexString appendFormat:@"%02x", (unsigned int)dataBuffer[i]];
                         }
-
-                        qrValue = [NSString stringWithString:hexString];
+                        
+                        // 0x4 + length + content(length * 2) + 0ec11…ec11 https://kanae.5ch.net/test/read.cgi/poke/1416482167/?v=pc
+                        NSRegularExpression *suffixRegex = [NSRegularExpression regularExpressionWithPattern:@"0(ec11)+(ec)?$" options:NSRegularExpressionCaseInsensitive error:NULL];
+                        NSString *valueWithLength = [suffixRegex stringByReplacingMatchesInString:[hexString substringFromIndex:1] options:0 range:NSMakeRange(0, hexString.length - 1) withTemplate:@""];
+                        
+                        if (valueWithLength.length < 1) {
+                            continue;
+                        }
+                        
+                        int i = 0;
+                        int len = (int)valueWithLength.length;
+                        for (i = 2; i < len; i += 2) {
+                            NSString *value = [valueWithLength substringFromIndex:i];
+                            NSUInteger expectedLen = (NSUInteger)strtoull([[valueWithLength substringToIndex:i] UTF8String], NULL, 16);
+                            
+                            if (value.length == expectedLen * 2) {
+                                qrValue = [NSString stringWithString:value];
+                            } else if (value.length < expectedLen * 2) {
+                                break;
+                            }
+                        }
                     }
                     
+                    if (!qrValue) {
+                        continue;
+                    }
                     
                     [weakSelf.session stopRunning];
                     
