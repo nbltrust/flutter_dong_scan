@@ -97,7 +97,7 @@
                         }
                         
                         // 0x4 + length + content(length * 2) + 0ec11…ec11 https://kanae.5ch.net/test/read.cgi/poke/1416482167/?v=pc
-                        NSRegularExpression *suffixRegex = [NSRegularExpression regularExpressionWithPattern:@"0ec(11ec)*(11)?$" options:NSRegularExpressionCaseInsensitive error:NULL];
+                        NSRegularExpression *suffixRegex = [NSRegularExpression regularExpressionWithPattern:@"0(ec11)*(ec)?$" options:NSRegularExpressionCaseInsensitive error:NULL];
                         NSString *valueWithLength = [suffixRegex stringByReplacingMatchesInString:[hexString substringFromIndex:1] options:0 range:NSMakeRange(0, hexString.length - 1) withTemplate:@""];
                         
                         if (valueWithLength.length < 1) {
